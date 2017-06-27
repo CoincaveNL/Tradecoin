@@ -1192,8 +1192,9 @@ unsigned int static DigiShield(const CBlockIndex* pindexLast, const CBlockHeader
   }
   
   		  
-  unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock)		  unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock)
-  {		  {
+  unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock)		  
+   
+  {		  
       int nHeight = pindexLast->nHeight + 1;
   	bool fNewDifficultyProtocol = (nHeight >= nDiffChangeTarget);
   
@@ -1204,20 +1205,7 @@ unsigned int static DigiShield(const CBlockIndex* pindexLast, const CBlockHeader
   
         static const int64	      	 BlocksTargetSpacing 			 = 60; // 1 minute
           unsigned int                       TimeDaySeconds                                = 60 * 60 * 24;
-unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock)
-{
-    
-     int nHeight = pindexLast->nHeight + 1;
-  	bool fNewDifficultyProtocol = (nHeight >= nDiffChangeTarget);
-  
-  	if (fNewDifficultyProtocol) {
-  		return DigiShield(pindexLast, pblock);
-  	}
-  	else {
-  
-          static const int64	      	 BlocksTargetSpacing 			 = 60; // 1 minute
-          unsigned int                       TimeDaySeconds                                = 60 * 60 * 24;
-    
+
     unsigned int nProofOfWorkLimit = bnProofOfWorkLimit.GetCompact();
 
     // Genesis block
