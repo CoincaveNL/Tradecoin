@@ -36,7 +36,7 @@ unsigned int nTransactionsUpdated = 0;
 
 map<uint256, CBlockIndex*> mapBlockIndex;
 uint256 hashGenesisBlock("0xb9e19be7007ebcbf4a33c7c3beb30eadc0abdc1667bc982090fbc8de0dec73f8");
-static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // Tradecoin: starting difficulty is 1 / 2^12
+static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // Tradecoincoin: starting difficulty is 1 / 2^12
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
 uint256 nBestChainWork = 0;
@@ -68,7 +68,7 @@ map<uint256, set<uint256> > mapOrphanTransactionsByPrev;
 // Constant stuff for coinbase transactions we create:
 CScript COINBASE_FLAGS;
 
-const string strMessageMagic = "Tradecoin Signed Message:\n";
+const string strMessageMagic = "Scorecoin Signed Message:\n";
 
 double dHashesPerSec = 0.0;
 int64 nHPSTimerStart = 0;
@@ -362,7 +362,7 @@ unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans)
 
 bool CTxOut::IsDust() const
 {
-    // Tradecoin: IsDust() detection disabled, allows any valid dust to be relayed.
+    // Scorecoin: IsDust() detection disabled, allows any valid dust to be relayed.
     // The fees imposed on each dust txo is considered sufficient spam deterrant. 
     return false;
 }
@@ -623,7 +623,7 @@ int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
             nMinFee = 0;
     }
 
-    // Tradecoin
+    // Scorecoin
     // To limit dust spam, add nBaseFee for each output less than DUST_SOFT_LIMIT
     BOOST_FOREACH(const CTxOut& txout, vout)
         if (txout.nValue < DUST_SOFT_LIMIT)
@@ -1084,7 +1084,8 @@ uint256 static GetOrphanRoot(const CBlockHeader* pblock)
         pblock = mapOrphanBlocks[pblock->hashPrevBlock];
     return pblock->GetHash();
 }
-static const int64 nDiffChangeTarget = 54700; // Patch effective @ block 54700
+
+static const int64 nDiffChangeTarget = 65000; // Patch effective @ block 65000
 int64 static GetBlockValue(int nHeight, int64 nFees)
 {
     int64 nSubsidy = 25 * COIN;
@@ -1120,92 +1121,89 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
     bnResult.SetCompact(nBase);
     while (nTime > 0 && bnResult < bnProofOfWorkLimit)
     {
-        
         if(nBestHeight+1<nDiffChangeTarget){
         // Maximum 400% adjustment...
         bnResult *= 4;
         // ... in best-case exactly 4-times-normal target time
         nTime -= nTargetTimespan*4;
-            } else {
+    } else {
             // Maximum 10% adjustment...
-           bnResult = (bnResult * 110) / 100;
-             // ... in best-case exactly 4-times-normal target time
-             nTime -= nTargetTimespanNEW*4;
-        }
+          bnResult = (bnResult * 110) / 100;
+            // ... in best-case exactly 4-times-normal target time
+            nTime -= nTargetTimespanNEW*4;
+         }
         
-       }
-    
+        }
     if (bnResult > bnProofOfWorkLimit)
         bnResult = bnProofOfWorkLimit;
     return bnResult.GetCompact();
 }
 unsigned int static DigiShield(const CBlockIndex* pindexLast, const CBlockHeader *pblock)
  {
-      int64 retargetTimespan = nTargetTimespanNEW;
-      int64 retargetInterval = nTargetTimespanNEW / nTargetSpacing;
-  
-      // Only change once per interval
-      if ((pindexLast->nHeight+1) % retargetInterval != 0)
-     {
-          return pindexLast->nBits;
-      }
-  
-      // Einsteinium: This fixes an issue where a 51% attack can change difficulty at will.
-      // Go back the full period unless it's the first retarget after genesis. Code courtesy of Art Forz
-      int blockstogoback = retargetInterval-1;
-      if ((pindexLast->nHeight+1) != retargetInterval)
-          blockstogoback = retargetInterval;
-  
-      // Go back by what we want to be 14 days worth of blocks
-      const CBlockIndex* pindexFirst = pindexLast;
-      for (int i = 0; pindexFirst && i < blockstogoback; i++)
-          pindexFirst = pindexFirst->pprev;
-      assert(pindexFirst);
-  
-      // Limit adjustment step
-      int64 nActualTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
-      printf(" nActualTimespan = %"PRI64d" before bounds\n", nActualTimespan);
-      
-      CBigNum bnNew;
-      bnNew.SetCompact(pindexLast->nBits);
-     
- //DigiShield implementation - thanks to RealSolid & WDC for this code
-  // amplitude filter - thanks to daft27 for this code
-          nActualTimespan = retargetTimespan + (nActualTimespan - retargetTimespan)/8;
-          printf("DIGISHIELD RETARGET\n");
-          if (nActualTimespan < (retargetTimespan - (retargetTimespan/4)) ) nActualTimespan = (retargetTimespan - (retargetTimespan/4));
-          if (nActualTimespan > (retargetTimespan + (retargetTimespan/2)) ) nActualTimespan = (retargetTimespan + (retargetTimespan/2));
-      // Retarget
-      
-      bnNew *= nActualTimespan;
-      bnNew /= retargetTimespan;
-       if (bnNew > bnProofOfWorkLimit)
-          bnNew = bnProofOfWorkLimit;
+     int64 retargetTimespan = nTargetTimespanNEW;
+     int64 retargetInterval = nTargetTimespanNEW / nTargetSpacing;
  
-      /// debug print
-      printf("GetNextWorkRequired: DIGISHIELD RETARGET\n");
-      printf("nTargetTimespan = %"PRI64d" nActualTimespan = %"PRI64d"\n", retargetTimespan, nActualTimespan);
-      printf("Before: %08x %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
-      printf("After: %08x %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
-  
-      return bnNew.GetCompact();
-  }
-  
-  		  
-  unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock)		  
-   
-  {		  
-      int nHeight = pindexLast->nHeight + 1;
-  	bool fNewDifficultyProtocol = (nHeight >= nDiffChangeTarget);
-  
-  	if (fNewDifficultyProtocol) {
-  		return DigiShield(pindexLast, pblock);
-  	}
-  	else {
-  
-        static const int64	      	 BlocksTargetSpacing 			 = 60; // 1 minute
-          unsigned int                       TimeDaySeconds                                = 60 * 60 * 24;
+     // Only change once per interval
+     if ((pindexLast->nHeight+1) % retargetInterval != 0)
+     {
+         return pindexLast->nBits;
+     }
+ 
+     // Einsteinium: This fixes an issue where a 51% attack can change difficulty at will.
+     // Go back the full period unless it's the first retarget after genesis. Code courtesy of Art Forz
+     int blockstogoback = retargetInterval-1;
+     if ((pindexLast->nHeight+1) != retargetInterval)
+         blockstogoback = retargetInterval;
+ 
+     // Go back by what we want to be 14 days worth of blocks
+     const CBlockIndex* pindexFirst = pindexLast;
+     for (int i = 0; pindexFirst && i < blockstogoback; i++)
+         pindexFirst = pindexFirst->pprev;
+     assert(pindexFirst);
+ 
+     // Limit adjustment step
+     int64 nActualTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
+     printf(" nActualTimespan = %"PRI64d" before bounds\n", nActualTimespan);
+     
+     CBigNum bnNew;
+     bnNew.SetCompact(pindexLast->nBits);
+     
+  //DigiShield implementation - thanks to RealSolid & WDC for this code
+ // amplitude filter - thanks to daft27 for this code
+         nActualTimespan = retargetTimespan + (nActualTimespan - retargetTimespan)/8;
+         printf("DIGISHIELD RETARGET\n");
+         if (nActualTimespan < (retargetTimespan - (retargetTimespan/4)) ) nActualTimespan = (retargetTimespan - (retargetTimespan/4));
+         if (nActualTimespan > (retargetTimespan + (retargetTimespan/2)) ) nActualTimespan = (retargetTimespan + (retargetTimespan/2));
+     // Retarget
+     
+     bnNew *= nActualTimespan;
+     bnNew /= retargetTimespan;
+ 
+     if (bnNew > bnProofOfWorkLimit)
+         bnNew = bnProofOfWorkLimit;
+ 
+     /// debug print
+     printf("GetNextWorkRequired: DIGISHIELD RETARGET\n");
+     printf("nTargetTimespan = %"PRI64d" nActualTimespan = %"PRI64d"\n", retargetTimespan, nActualTimespan);
+     printf("Before: %08x %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
+     printf("After: %08x %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
+ 
+     return bnNew.GetCompact();
+ }
+ 
 
+unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock)
+{
+     int nHeight = pindexLast->nHeight + 1;
+ 	bool fNewDifficultyProtocol = (nHeight >= nDiffChangeTarget);
+ 
+ 	if (fNewDifficultyProtocol) {
+ 		return DigiShield(pindexLast, pblock);
+ 	}
+ 	else {
+ 
+         static const int64	      	 BlocksTargetSpacing 			 = 60; // 1 minute
+         unsigned int                       TimeDaySeconds                                = 60 * 60 * 24;
     unsigned int nProofOfWorkLimit = bnProofOfWorkLimit.GetCompact();
 
     // Genesis block
@@ -1236,7 +1234,7 @@ unsigned int static DigiShield(const CBlockIndex* pindexLast, const CBlockHeader
     }
     }
 
-    // Tradecoin: This fixes an issue where a 51% attack can change difficulty at will.
+    // Scorecoin: This fixes an issue where a 51% attack can change difficulty at will.
     // Go back the full period unless it's the first retarget after genesis. Code courtesy of Art Forz
     int blockstogoback = nInterval-1;
     if ((pindexLast->nHeight+1) != nInterval)
@@ -4652,7 +4650,7 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
         return false;
 
     //// debug print
-    printf("TradecoinMiner:\n");
+    printf("ScorecoinMiner:\n");
     printf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
     pblock->print();
     printf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue).c_str());
@@ -4661,7 +4659,7 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     {
         LOCK(cs_main);
         if (pblock->hashPrevBlock != hashBestChain)
-            return error("TradecoinMiner : generated block is stale");
+            return error("ScorecoinMiner : generated block is stale");
 
         // Remove key from key pool
         reservekey.KeepKey();
@@ -4675,17 +4673,17 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
         // Process this block the same as if we had received it from another node
         CValidationState state;
         if (!ProcessBlock(state, NULL, pblock))
-            return error("TradecoinMiner : ProcessBlock, block not accepted");
+            return error("ScorecoinMiner : ProcessBlock, block not accepted");
     }
 
     return true;
 }
 
-void static TradecoinMiner(CWallet *pwallet)
+void static ScorecoinMiner(CWallet *pwallet)
 {
-    printf("TradecoinMiner started\n");
+    printf("ScorecoinMiner started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
-    RenameThread("tradecoin-miner");
+    RenameThread("scorecoin-miner");
 
     // Each thread has its own key and counter
     CReserveKey reservekey(pwallet);
@@ -4707,7 +4705,7 @@ void static TradecoinMiner(CWallet *pwallet)
         CBlock *pblock = &pblocktemplate->block;
         IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
 
-        printf("Running TradecoinMiner with %"PRIszu" transactions in block (%u bytes)\n", pblock->vtx.size(),
+        printf("Running ScorecoinMiner with %"PRIszu" transactions in block (%u bytes)\n", pblock->vtx.size(),
                ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
         //
@@ -4806,7 +4804,7 @@ void static TradecoinMiner(CWallet *pwallet)
     } }
     catch (boost::thread_interrupted)
     {
-        printf("TradecoinMiner terminated\n");
+        printf("ScorecoinMiner terminated\n");
         throw;
     }
 }
@@ -4831,7 +4829,7 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
 
     minerThreads = new boost::thread_group();
     for (int i = 0; i < nThreads; i++)
-        minerThreads->create_thread(boost::bind(&TradecoinMiner, pwallet));
+        minerThreads->create_thread(boost::bind(&ScorecoinMiner, pwallet));
 }
 
 // Amount compression:
